@@ -32,9 +32,14 @@ streamlit run app.py
 ダミー値）。実データに置き換えるには次を実行する。
 
 ```bash
-python scripts/fetch_jpx.py                # 最新の掲載分
-python scripts/fetch_jpx.py --years 2025 2026 --all-files   # 過去分もまとめて
+python scripts/fetch_jpx.py                  # 一覧ページの未取得分だけ
+python scripts/fetch_jpx.py --years 2026 2025  # バックナンバーも
+python scripts/fetch_jpx.py --basis 金額       # 金額だけ（取得量が半分になる）
 ```
+
+Excel は1ファイルに前週と当週の2週分しか入っていないため、履歴を作るには
+一覧ページとバックナンバーを辿る必要がある。取得済みの週は自動でスキップし、
+リクエストの間隔を1.5秒空けている。
 
 ## GitHub にデータを置く
 
@@ -64,6 +69,9 @@ data_url = "https://raw.githubusercontent.com/USERNAME/jpx-investor-app/main/dat
 - 掲載は毎週第4営業日（通常は木曜）15:30。対象は前週の売買。
 - CSV は `week_end, week_label, market, investor, basis, sales, purchases, balance` の
   ロング形式。単位は **金額＝百万円、株数＝千株**（アプリ側で億円／百万株に換算）。
+- Excel の実構造：シートは市場ごと（英語名 TSE Prime など、日本語の市場名は表題から取得）、
+  1ファイルに2週分が横並び、投資部門は「売り／買い／合計」の3行1組で差引きは買いの行、
+  数値はカンマ区切りの文字列、単位は金額＝千円・株数＝千株。
 - **形式変更の注意**：JPX は 2026年9月29日 掲載分から、株数と金額を1ファイルに統合し、
   直近週のみ収録、1シートに市場×投資部門をまとめる形式に変わる
   （`stock_1_w_YYYYMMDD_YYYYMMDD.xlsx`）。`fetch_jpx.py` は旧形式・新形式の
