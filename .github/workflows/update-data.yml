@@ -1,0 +1,51 @@
+name: update-jpx-data
+
+on:
+  schedule:
+    # JPX は毎週第4営業日（通常は木曜）15:30 JST 掲載。余裕をみて木 17:00 JST に実行。
+    - cron: "0 8 * * 4"
+    # 祝日で掲載がずれた場合の保険（金 17:00 JST）
+    - cron: "0 8 * * 5"
+  workflow_dispatch:
+    inputs:
+      years:
+        description: "取得する年（スペース区切り。空なら最新ページのみ）"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch JPX data
+        run: |
+          if [ -n "${{ github.event.inputs.years }}" ]; then
+            python scripts/fetch_jpx.py --years ${{ github.event.inputs.years }}
+          else
+            python scripts/fetch_jpx.py
+          fi
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- data/investor_weekly.csv; then
+            echo "変更なし"
+          else
+            git add data/investor_weekly.csv
+            git commit -m "data: JPX 投資部門別売買状況を更新 ($(date -u +%Y-%m-%d))"
+            git push
+          fi
