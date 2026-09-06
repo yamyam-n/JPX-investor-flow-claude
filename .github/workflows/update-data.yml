@@ -20,22 +20,40 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
 
+      - name: Show repository layout
+        run: ls -R --ignore=.git
+
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install streamlit pandas plotly requests beautifulsoup4 lxml openpyxl xlrd
+          fi
 
       - name: Fetch JPX data
         run: |
-          if [ -n "${{ github.event.inputs.years }}" ]; then
-            python scripts/fetch_jpx.py --years ${{ github.event.inputs.years }}
+          # scripts/ 配下でもリポジトリ直下でも動くようにする
+          if [ -f scripts/fetch_jpx.py ]; then
+            SCRIPT=scripts/fetch_jpx.py
+          elif [ -f fetch_jpx.py ]; then
+            SCRIPT=fetch_jpx.py
           else
-            python scripts/fetch_jpx.py
+            echo "fetch_jpx.py が見つかりません。リポジトリに追加してください。" >&2
+            exit 1
+          fi
+          echo "using $SCRIPT"
+          if [ -n "${{ github.event.inputs.years }}" ]; then
+            python "$SCRIPT" --out data/investor_weekly.csv --years ${{ github.event.inputs.years }}
+          else
+            python "$SCRIPT" --out data/investor_weekly.csv
           fi
 
       - name: Commit if changed
